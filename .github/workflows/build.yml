@@ -1,0 +1,74 @@
+name: Build APK
+
+# 触发条件：
+#  - push 到 main
+#  - 针对 main 的 PR
+#  - 手动触发（仓库 Actions 页面 -> Run workflow）
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile release APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # 启用 Gradle 依赖/构建缓存，加速后续构建
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform 37
+        run: sdkmanager --install "platforms;android-37"
+
+      # 项目强制要求 keystore/keystore.properties 存在（build.gradle.kts 直接加载）。
+      # CI 使用调试签名构建；如需正式签名，在仓库 Settings -> Secrets and variables
+      # 配置签名信息，并把下面两处替换为 secrets。
+      - name: Generate debug keystore
+        run: |
+          mkdir -p keystore
+          keytool -genkeypair -v \
+            -keystore keystore/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug, O=Android, C=US"
+
+      - name: Write keystore.properties
+        run: |
+          cat > keystore/keystore.properties <<'EOF'
+          storeFile=../keystore/debug.keystore
+          storePassword=android
+          keyAlias=androiddebugkey
+          keyPassword=android
+          EOF
+
+      - name: Grant gradlew execute permission
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lucky-tool-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
