@@ -68,6 +68,47 @@ jobs:
           keyPassword=android
           EOF
 
+      # app/proguard-rules.pro 引用 keystore/proguard-custom.txt 作为混淆字典，
+      # 该文件为作者本地私有文件，未提交到仓库；这里生成一份占位字典。
+      # 如需与作者一致的真实词表，可将字典内容放入 GitHub Secrets 并在此写入。
+      - name: Create proguard obfuscation dictionary
+        run: |
+          cat > keystore/proguard-custom.txt <<'EOF'
+          a
+          b
+          c
+          d
+          e
+          f
+          g
+          h
+          i
+          j
+          k
+          l
+          m
+          n
+          o
+          p
+          q
+          r
+          s
+          t
+          u
+          v
+          w
+          x
+          y
+          z
+          aa
+          ab
+          ac
+          ad
+          ae
+          af
+          ag
+          EOF
+
       - name: Grant gradlew execute permission
         run: chmod +x gradlew
 
