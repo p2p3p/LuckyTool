@@ -32,11 +32,15 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
+      # 直接使用 GitHub runner 预装的 Android SDK（licenses 已接受），
+      # 仅补装项目需要的 android-37 平台。
       - name: Install Android platform 37
-        run: sdkmanager --install "platforms;android-37"
+        run: |
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+          fi
+          "$SDKMANAGER" --install "platforms;android-37"
 
       # 项目强制要求 keystore/keystore.properties 存在（build.gradle.kts 直接加载）。
       # CI 使用调试签名构建；如需正式签名，在仓库 Settings -> Secrets and variables
